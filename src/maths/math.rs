@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::f64;
 
 #[allow(dead_code)]
 pub fn procedure(x:i32) -> i32 {
@@ -6,13 +7,13 @@ pub fn procedure(x:i32) -> i32 {
     result
 }
 
-pub fn sigmoid(entries:Vec<f32>) -> f32 {
-    let mut polinom:f32 = 0.0;
-    for x in entries.iter() {
-        let mut rng = rand::thread_rng();
-        let w:f32 = rng.gen_range(1..=100) as f32;
-        polinom = polinom + (w * x);
-    }
+pub fn random() -> f32 {
+    let mut rng = rand::thread_rng();
+    let w:f32 = rng.gen_range(1..=100) as f32;
+    return w;
+}
 
-    return polinom;
+pub fn sigmoid(x:f32) -> f32 {
+    let output:f32 = 1.0/(1.0 + (-x).exp()) as f32;
+    return output;
 }

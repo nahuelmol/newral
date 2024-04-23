@@ -24,18 +24,21 @@ impl Node {
         }
     }
 
-    fn kickstart(&mut self, entry:Vec<f32>) -> f32 {
+    fn kickstart(&mut self, entry:Vec<f32>) -> (f32, Vec<f32>) {
         let mut polinom:f32 = 0.0;
+        let mut ws:Vec<f32> = Vec::new();
         for ent in entry.iter(){
             let out = sigmoid(*ent);
             let w = random();
+            ws.push(w);
             polinom = polinom + (out * w)
         }
         //each ent is sismoigded
         //each sismoig output is balanced with a random w weight
         //at the end we have just a polinom as the output
         //of that node
-        return polinom;
+        //return polinom;
+        (polinom, ws.clone())
     }
 }
 
@@ -50,9 +53,12 @@ struct Network {
     last:Cell<Node>,
     next:Cell<Node>,
 
-    output:f32,
-    end_newron:f32,
+    output:Cell<f32>,
+    end_newron:Cell<Node>,
     //entry:Vec<f32>,
+
+    ws:Vec<Cell<f32>>,
+    weights:Vec<Vec<Cell<f32>>>,
 }
 
 impl Network {
@@ -69,27 +75,35 @@ impl Network {
 
             nodes,
             levels:Vec::new(),
-            output:0.0,
+            output:Cell::new(0.0),
 
-            end_newron:0.0,
+            ws:Vec::new(),
+            weights:Vec::new(),
+
+            end_newron:Cell::new(Node { id:0, level:0, output:0.0, input:0.0 }),
         }
     }
 
-    fn forward(&self, entry:Vec<f32>){
+    fn forward(&mut self, entry:Vec<f32>){
         let mut polinoms:Vec<f32> = Vec::new();
         let mut nentry:Vec<f32> = entry;
         for level in self.levels.iter() {
             for node in level.iter(){
                 //kickstart returns a polinom(w,s) output for each node
                 //I am going to save polinoms (output of a node)
-                let polinom:f32 = node.get().kickstart(nentry.clone());
+                let (polinom, ws) = node.get().kickstart(nentry.clone());
+                for each_ws in ws {
+                    self.ws.push(Cell::new(each_ws));
+                }
                 let mut newnode = node.get();
                 //println!("node:{:?} has entry:{:?} and output:{}", node.get().id, nentry, polinom);
                 newnode.output = polinom;
                 node.set(newnode);
                 polinoms.push(polinom);
             }
-            //println!("level:{:?}", polinoms);
+            //freeing self.ws
+            self.weights.push(self.ws.clone());
+            self.ws = Vec::new();
             nentry = polinoms.clone();
             polinoms = Vec::new();
         }
@@ -102,12 +116,22 @@ impl Network {
         }
 
         let fnode = Node::new(100);
-        let cell_fnode = Cell::new(fnode);
-        self.push(cell_fnode.clone());
-        let final_result = cell_fnode.get().kickstart(fentry.clone());
+        let cell_fnode = Cell::new(fnode.clone());
+        self.end_newron.set(fnode.clone());
+        let (final_result, weight) = cell_fnode.get().kickstart(fentry.clone());
+        self.output.set(final_result);
+        println!("final weight:{}", weight[0]);
         return final_result;
     }
     
+
+    fn show_weights(&self){
+        for wlevel in self.weights.iter() {
+            for w in wlevel.iter() {
+                println!("w:{}", w.get());
+            }
+        }
+    }
 
     fn show(&self) {
         for level in self.levels.iter(){
@@ -117,8 +141,18 @@ impl Network {
         }
     }
 
-    fn backward(&self){
-        println!("{}", self.output);
+    fn backward(&self, new_result:f32){
+        self.output.set(new_result);
+        let mut old_newron = self.end_newron.get();
+        old_newron.output = self.output.get();
+
+        let lastl = self.levels.len(); //last level
+        for level in self.levels.iter().rev() {
+            for node in level.iter().rev() {
+                println!("id:{}", node.get().id);
+                println!("output: {}", node.get().output);
+            };
+        }
     }
 
     fn push(&mut self, node:Cell<Node>){

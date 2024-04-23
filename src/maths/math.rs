@@ -9,7 +9,7 @@ pub fn procedure(x:i32) -> i32 {
 
 pub fn random() -> f32 {
     let mut rng = rand::thread_rng();
-    let w:f32 = rng.gen_range(1..=100) as f32;
+    let w:f32 = rng.gen();
     return w;
 }
 
@@ -17,3 +17,5 @@ pub fn sigmoid(x:f32) -> f32 {
     let output:f32 = 1.0/(1.0 + (-x).exp()) as f32;
     return output;
 }
+
+pub fn back_propagation(){}

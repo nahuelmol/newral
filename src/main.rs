@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::sync::Arc;
 
 mod maths;
 use crate::maths::math::procedure;
@@ -11,7 +10,6 @@ struct Node {
     id:u32,
     level:usize,
     output:f32,
-    input:f32,
 }
 
 impl Node {
@@ -20,10 +18,36 @@ impl Node {
             id,
             level:0,
             output:0.0,
-            input:0.0,
         }
     }
 
+    fn polinom(&mut self, entry:Vec<f32>) -> f32 {
+        //I am going to form the polynom here
+        let mut ws:Vec<f32> = Vec::new();
+        for ent in entry.iter(){
+            let w = random();
+            ws.push(w);
+        }
+        //calculating the output of the polinom
+        let mut results:Vec<f32> = Vec::new();
+        let sentry:usize = entry.len();
+        for i in 1..=sentry {
+            if let Some(element) = entry.get(i-1){
+                if let Some(weigth) = ws.get(i-1){
+                    let result = element * weigth;
+                    results.push(result);
+                }
+            } else {
+                println!("index out of bounds");
+            }
+        }
+        let mut output:f32 = 0.0;
+        for res in results.iter(){
+            output = output + res;
+        }
+        return output;
+    }
+   
     fn kickstart(&mut self, entry:Vec<f32>) -> (f32, Vec<f32>) {
         let mut polinom:f32 = 0.0;
         let mut ws:Vec<f32> = Vec::new();
@@ -70,8 +94,8 @@ impl Network {
             total_nodes:Cell::new(1),
             total_levels:Cell::new(0),
 
-            last:Cell::new(Node { id:0, level:0, output:0.0, input:0.0 }),
-            next:Cell::new(Node { id:0, level:0, output:0.0, input:0.0 }),
+            last:Cell::new(Node { id:0, level:0, output:0.0 }),
+            next:Cell::new(Node { id:0, level:0, output:0.0 }),
 
             nodes,
             levels:Vec::new(),
@@ -80,7 +104,36 @@ impl Network {
             ws:Vec::new(),
             weights:Vec::new(),
 
-            end_newron:Cell::new(Node { id:0, level:0, output:0.0, input:0.0 }),
+            end_newron:Cell::new(Node { id:0, level:0, output:0.0 }),
+        }
+    }
+
+    fn newforward(&mut self, entry:Vec<f32>){
+        let mut nentry:Vec<f32> = entry;
+        let mut output:f32 = 0.0;
+        let mut level_reg = 0;
+        for level in self.levels.iter() {
+            for node in level.iter(){
+                if level_reg == 0 {
+                    output = node.get().polinom(nentry.clone());
+                    let sigmoided = sigmoid(output);
+                    let mut newnode = node.get();
+                    newnode.output = sigmoided;
+                    node.set(newnode);
+                } else {
+                    let prevs = &self.levels[level_reg - 1];
+                    let mut previous:Vec<f32> = Vec::new();
+                    for prev in prevs.iter(){
+                        previous.push(prev.get().output);
+                    }
+                    output = node.get().polinom(previous);
+                    let sigmoided = sigmoid(output);
+                    let mut newnode = node.get();
+                    newnode.output = sigmoided;
+                    node.set(newnode);
+                }
+            }
+            level_reg = level_reg + 1;
         }
     }
 
@@ -146,7 +199,6 @@ impl Network {
         let mut old_newron = self.end_newron.get();
         old_newron.output = self.output.get();
 
-        let lastl = self.levels.len(); //last level
         for level in self.levels.iter().rev() {
             for node in level.iter().rev() {
                 println!("id:{}", node.get().id);
